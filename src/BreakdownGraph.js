@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 
 const Tooltip = styled.div`
@@ -96,8 +96,7 @@ const GraphLegend = ({viewPort, isVertical}) => {
             <rect style={{fill: GraphColor.INITIAL}} x={viewPort.x+125} y={firstRow} width={20} height={20}></rect>
             <text style={{fontSize}} x={viewPort.x + 150} y={firstRow+15}>Initial Coverage</text>
 
-            <rect style={{fill: GraphColor.GAP}}
-                  x={viewPort.x+offsets.x1}
+            <rect style={{fill: GraphColor.GAP}}  x={viewPort.x+offsets.x1}
                   y={secondRow}
                   width={20} height={20} />
 
@@ -109,10 +108,12 @@ const GraphLegend = ({viewPort, isVertical}) => {
     )
 };
 
-const GraphAxis = ({viewPort, isVertical, graphConfig, data}) => {
+const GraphAxis = ({viewPort, xAxisLabels, yAxisLabels, isVertical, graphConfig, data}) => {
     let fontSize = isVertical ? viewPort.vertical.config.fontSize : viewPort.config.fontSize;
 
-    const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    const SECTION_WIDTH = viewPort.width / xAxisLabels.length;
+    const BAR_WIDTH = SECTION_WIDTH / 2;
+    const BAR_PADDING = (SECTION_WIDTH - BAR_WIDTH) / 2;
 
     return (
         <g className="labels x-labels">
@@ -125,17 +126,20 @@ const GraphAxis = ({viewPort, isVertical, graphConfig, data}) => {
             {/* Y Axis End */}
 
             {/* Y Axis Labels Start */}
-            <text
-                style={{fontSize, color: GraphColor.AXIS}}
-                fontWeight="bold"
-                x={0} y={55}>
-            </text>
+            {yAxisLabels.map((label, idx) => {
+                let xAxis = (idx * SECTION_WIDTH) + viewPort.x + BAR_PADDING;
+                return (
+                    <>
+                    <line
+                        style={{stroke: GraphColor.AXIS, strokeWidth: graphConfig.axisWidth}}
+                        x1={50} y1={label.y}
+                        x2={60} y2={label.y}
+                    />
+                    <text style={{fontSize, color: GraphColor.AXIS}} fontWeight="bold" x={5} y={label.y+5}>${label.value}</text>
+                    </>
+                )
+            })}
 
-            <line
-                style={{stroke: GraphColor.AXIS, strokeWidth: graphConfig.axisWidth}}
-                x1="45" y1={viewPort.y}
-                x2="60" y2={viewPort.y}
-            />
             {/* Y Axis Labels End */}
 
             {/* X Axis*/}
@@ -145,53 +149,45 @@ const GraphAxis = ({viewPort, isVertical, graphConfig, data}) => {
                 x2={viewPort.x} y2={viewPort.graphHeight-30}
             />
 
-            <line
-                style={{stroke: GraphColor.AXIS, strokeWidth: graphConfig.axisWidth}}
-                x1={viewPort.x} y1={viewPort.y}
-                x2={viewPort.graphWidth} y2={viewPort.y}
-            />
-
-            {data.map((month, idx) => {
-                let barWidth = viewPort.sectionWidth / 2;
-                let barPadding = (viewPort.sectionWidth-barWidth) / 2
-                let xAxis = (idx * viewPort.sectionWidth) + viewPort.x + barPadding;
+            {xAxisLabels.map((month, idx) => {
+                let xAxis = (idx * SECTION_WIDTH) + viewPort.x + BAR_PADDING;
                 return <text style={{fontSize, color: GraphColor.AXIS}} fontWeight="bold" x={xAxis+10} y={viewPort.graphHeight - fontSize + 10}>{month}</text>
             })}
         </g>
     )
-}
+};
 
-export const BreakdownGraph = ({monthlyCosts, isVertical}) => {
+export const BreakdownGraph = ({monthlyCosts, isVertical, monthOffset}) => {
+    const graphOrientation = isVertical || false;
+    const graphWidth = graphOrientation ? 200 : 1200;
+    const graphHeight = graphOrientation ? 300 : 350;
+
     const [tooltip, setTooltip] = useState({
         active: false,
         x: 0,
         y: 0,
-        costDetails: {}
+        costDetails: {
+            planPhase: '',
+            drugList: []
+        }
     });
 
-    const graphOrientation = isVertical || false;
+    let GRAPH_MAX_VALUE = Math.round(Math.max(...monthlyCosts.map((a, idx) => a.cost))/100)*100;
+    let GRAPH_MIN_VALUE = Math.round(Math.min(...monthlyCosts.map((a, idx) => a.cost))/100)*100;
 
-    const graphWidth = graphOrientation ? 200 : 1200;
-    const graphHeight = graphOrientation ? 300 : 350;
-    const bottomPadding = 22;
+    useEffect(() => {
+
+    }, []);
+
+
+    const BOTTOM_PADDING = 32;
     const fontSize = 16;
 
     const viewPort = {
-        vertical: {
-            x: 60,
-            y: 50,
-            w: graphWidth - 60,
-            h: graphHeight - 50,
-            config: {
-                fontSize: 12,
-                axisWidth: 1,
-                textPadding: 42
-            }
-        },
         x: 60,
         y: 50,
-        w: graphWidth - 60,
-        h: graphHeight - 50,
+        width: graphWidth - 60,
+        height: graphHeight - 50 - BOTTOM_PADDING,
         config: {
             fontSize: 16
         },
@@ -200,23 +196,20 @@ export const BreakdownGraph = ({monthlyCosts, isVertical}) => {
         sectionWidth: (graphWidth - 60) / monthlyCosts.length
     };
 
-    const getSectionWidth = (viewPort.w / monthlyCosts.length);
-
-    const graphYMax = (graphHeight - viewPort.x - bottomPadding);
+    const getSectionWidth = (viewPort.width / monthlyCosts.length);
 
     const convertDataToGraph = (value) => {
-        const graphYMax = (graphHeight - viewPort.x - bottomPadding);
-        let rectHeight = graphYMax * (Math.ceil(value)/ getCostRange().max);
-        // Offset Y coords to create start Y for bar rect
-        let barYStart = (graphYMax-rectHeight) + viewPort.y + 1;
+        let rectHeight = viewPort.height * (Math.ceil(value)/ (GRAPH_MAX_VALUE+100));
+        let barYStart = (viewPort.height-rectHeight) + viewPort.y;
 
         return {
-            y: barYStart,
-            height: rectHeight
+            y: barYStart + 1,
+            height: rectHeight,
+            value: value
         }
     };
 
-    const getCostRange = () => {
+    const getCostRange = (monthlyCosts) => {
         let max = Math.max(...monthlyCosts.map((a, idx) => a.cost));
         let min = Math.min(...monthlyCosts.map((a, idx) => a.cost));
 
@@ -224,18 +217,26 @@ export const BreakdownGraph = ({monthlyCosts, isVertical}) => {
             min = 0;
         }
 
-        let graphMax = Math.round(max/100)*100;
-        let graphMin = Math.round(min/100)*100;
+        let graphMax = Math.round(max/100)*100 + 100;
+        let graphMin = Math.round(min/100)*100 + 100;
 
-        let points = (graphMax - graphMin) / 5;
+        let p = [];
+        let midPoint = (graphMax - graphMin) / 2;
+        let highMid = (graphMax - midPoint);
+        let lowMid = (midPoint - graphMin);
 
-        //graphHeight-30
+        p[0] = convertDataToGraph(graphMax * .90);
+        p[1] = convertDataToGraph(graphMax * .70);
+        p[2] = convertDataToGraph(graphMax * .50);
+        p[3] = convertDataToGraph(graphMax * .30);
+        p[4] = convertDataToGraph(graphMin);
+
+
         return {
             max: graphMax + 100,
             min: graphMin + 100,
-            xDataSteps: points
+            yAxis: p
         }
-
     };
 
     const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -245,17 +246,21 @@ export const BreakdownGraph = ({monthlyCosts, isVertical}) => {
         textPadding: 42
     };
 
-    const getAxisOffset = (index) => ((index * viewPort.sectionWidth) + viewPort.x + 2);
+    const getAxisOffset = (index, offset = 0) => (((index+offset) * viewPort.sectionWidth) + viewPort.x + 2);
 
     function enter(e, details) {
-        console.log('open');
+        let drugList = details.map((drug, idx) => {
+            return `${drug.detailLabel}: $${drug.memberCost}`
+        });
+
         let costDetails = {
-            planPhase: details[0].planPhase
+            planPhase: details[0].planPhase,
+            drugList: drugList
         };
+
         let pageX = e.pageX;
         let pageY = e.pageY;
         setTooltip({...tooltip, x: pageX, y: pageY, active: true, costDetails});
-
     }
 
     function move(e) {
@@ -263,7 +268,6 @@ export const BreakdownGraph = ({monthlyCosts, isVertical}) => {
     }
 
     function exit(e) {
-        console.log('close');
         setTooltip({...tooltip, active: false});
     }
 
@@ -272,7 +276,7 @@ export const BreakdownGraph = ({monthlyCosts, isVertical}) => {
             <svg width="100%" height="100%" viewBox={`0 0 ${graphWidth} ${graphHeight}`}>
 
                 <GraphLegend viewPort={viewPort} isVertical={false}/>
-                <GraphAxis viewPort={viewPort} graphConfig={graphConfig} data={monthLabels}/>
+
 
 
                 <g className="bar-graph-data">
@@ -300,7 +304,7 @@ export const BreakdownGraph = ({monthlyCosts, isVertical}) => {
                                     style={{fill: sectionColor}}
                                     x={barGraph.x - 1} y={viewPort.y}
                                     width={getSectionWidth}
-                                    height={graphYMax + 1} />
+                                    height={viewPort.height + 1} />
 
                                 <text
                                     style={{fontSize, color: GraphColor.AXIS}}
@@ -318,12 +322,15 @@ export const BreakdownGraph = ({monthlyCosts, isVertical}) => {
                         )
                     })}
                 </g>
-                <foreignObject x={tooltip.x-100} y={tooltip.y-100} style={{fontSize: 8, "width": '200px', "height":"200px", "position":"absolute","left":`${tooltip.x}px`,"top":`${tooltip.y}px`,"zIndex":100000, "display": tooltip.active ? "block" : "none"}}>
+                <GraphAxis viewPort={viewPort} xAxisLabels={monthLabels} yAxisLabels={getCostRange(monthlyCosts).yAxis} graphConfig={graphConfig}/>
+                <foreignObject x={tooltip.x-100} y={tooltip.y-100} style={{fontSize: 8, "width": '200px', "height":"400px", "position":"absolute","left":`${tooltip.x}px`,"top":`${tooltip.y}px`,"zIndex":100000, "display": tooltip.active ? "block" : "none"}}>
                     <Tooltip xmlns="http://www.w3.org/1999/xhtml">
                         <h1>{tooltip.costDetails.planPhase}</h1>
                         <p>You pay 25% of the full cost for brand name drugs, and 37% of the full cost for generics in the coverage gap.</p>
                         <h1>Cost Breakdown</h1>
-                        <p>You pay 25% of the full cost for brand name drugs, and 37% of the full cost for generics in the coverage gap.</p>
+                        {tooltip.costDetails.drugList.map((drug, idx) => {
+                            return <p>{drug}</p>
+                        })}
                     </Tooltip>
                 </foreignObject>
 

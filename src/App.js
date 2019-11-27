@@ -36,7 +36,7 @@ function App() {
                 ]
             },
             {
-                "cost":700,
+                "cost":200,
                 "costDetails":[
                     {
                         "memberCost":4.00,
@@ -65,7 +65,7 @@ function App() {
                 ]
             },
             {
-                "cost":600,
+                "cost":200,
                 "costDetails":[
                     {
                         "memberCost":4.00,
@@ -94,7 +94,7 @@ function App() {
                 ]
             },
             {
-                "cost":500,
+                "cost":200,
                 "costDetails":[
                     {
                         "memberCost":4.00,
@@ -123,7 +123,7 @@ function App() {
                 ]
             },
             {
-                "cost":400,
+                "cost":200,
                 "costDetails":[
                     {
                         "memberCost":4.00,
@@ -152,7 +152,7 @@ function App() {
                 ]
             },
             {
-                "cost":300,
+                "cost":200,
                 "costDetails":[
                     {
                         "memberCost":4.00,
@@ -326,7 +326,7 @@ function App() {
                 ]
             },
             {
-                "cost":0,
+                "cost":100,
                 "costDetails":[
                     {
                         "memberCost":4.00,
